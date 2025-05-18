@@ -5,6 +5,14 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+val unsplashAccessKey: String = project.findProperty("unsplashAccessKey") as? String
+    ?: error("unsplashAccessKey is missing in gradle.properties")
+
+val unsplashSecretKey: String = project.findProperty("unsplashSecretKey") as? String
+    ?: error("unsplashSecretKey is missing in gradle.properties")
+
+
+
 android {
     namespace = "kz.vrstep.countrytinder"
     compileSdk = 35
@@ -17,6 +25,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "UNSPLASH_ACCESS_KEY", "\"$unsplashAccessKey\"")
+        buildConfigField("String", "UNSPLASH_SECRET_KEY", "\"$unsplashSecretKey\"")
     }
 
     buildTypes {
@@ -37,6 +48,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
