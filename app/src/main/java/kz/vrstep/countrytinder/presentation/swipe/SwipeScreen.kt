@@ -108,6 +108,7 @@ fun SwipeScreen(
                         viewModel.onSwipeRight(currentCountry)
                         // ViewModel now handles currentCardIndexInBatch increment
                     },
+                    navController = navController,
                     modifier = Modifier.fillMaxSize(0.9f)
                 )
             }

@@ -7,6 +7,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,12 +32,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import coil3.compose.AsyncImagePainter
 import coil3.compose.SubcomposeAsyncImage
 import coil3.compose.SubcomposeAsyncImageContent
 import coil3.compose.rememberAsyncImagePainter
+import com.google.gson.Gson
 import kotlinx.coroutines.launch
 import kz.vrstep.countrytinder.domain.model.Country
+import kz.vrstep.countrytinder.presentation.navigation.Screen
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -46,6 +52,7 @@ fun CountryCard(
     isImageLoading: Boolean,
     onSwipeLeft: () -> Unit,
     onSwipeRight: () -> Unit,
+    navController: NavController,
     modifier: Modifier = Modifier
 ) {
     val TAG = "CountryCard[${country.name}]"
@@ -109,6 +116,17 @@ fun CountryCard(
                         }
                     }
                 )
+            }
+            .clickable { // **MAKE CARD CLICKABLE**
+                Log.d(TAG, "Card clicked for ${country.name}")
+                try {
+                    val countryJson = Gson().toJson(country)
+                    val encodedJson = URLEncoder.encode(countryJson, StandardCharsets.UTF_8.name())
+                    navController.navigate(Screen.CountryDetailScreen.createRoute(encodedJson))
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error serializing or encoding country JSON for navigation", e)
+                    // Handle error, e.g., show a toast or log
+                }
             }
             .clip(RoundedCornerShape(16.dp)),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)

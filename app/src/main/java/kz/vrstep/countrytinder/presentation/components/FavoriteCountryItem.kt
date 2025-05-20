@@ -1,6 +1,8 @@
 package kz.vrstep.countrytinder.presentation.components
 
+import android.util.Log
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,19 +16,39 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import coil3.compose.rememberAsyncImagePainter
+import com.google.gson.Gson
 import kz.vrstep.countrytinder.domain.model.Country
+import kz.vrstep.countrytinder.presentation.navigation.Screen
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @Composable
 fun FavoriteCountryItem(
     country: Country,
     onRemoveClick: () -> Unit,
+    navController: NavController, // Added NavController
     modifier: Modifier = Modifier
 ) {
+    val TAG = "FavoriteItem[${country.name}]"
     Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp)) // User's preference
+            .clickable {
+                Log.d(TAG, "Favorite item clicked for ${country.name}")
+                try {
+                    val countryJson = Gson().toJson(country)
+                    val encodedJson = URLEncoder.encode(countryJson, StandardCharsets.UTF_8.name())
+                    navController.navigate(Screen.CountryDetailScreen.createRoute(encodedJson))
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error serializing or encoding country JSON for navigation", e)
+                }
+            },
+        shape = RoundedCornerShape(8.dp), // User's preference
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp) // User's preference
+        // colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant) // Optional: keep or remove based on desired theme
     ) {
         Row(
             modifier = Modifier
@@ -35,7 +57,7 @@ fun FavoriteCountryItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
-                painter = rememberAsyncImagePainter(model = country.flagUrl),
+                painter = rememberAsyncImagePainter(model = country.flagUrl), // Coil 3
                 contentDescription = "Flag of ${country.name}",
                 modifier = Modifier
                     .size(40.dp)

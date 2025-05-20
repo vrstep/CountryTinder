@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Swipe
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -23,12 +22,15 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import kz.vrstep.countrytinder.presentation.decision.DecisionScreen
 import kz.vrstep.countrytinder.presentation.favorites.FavoritesScreen
+import kz.vrstep.countrytinder.presentation.detail.CountryDetailScreen
 import kz.vrstep.countrytinder.presentation.navigation.Screen
 import kz.vrstep.countrytinder.presentation.swipe.SwipeScreen
 import kz.vrstep.countrytinder.presentation.swipe.SwipeViewModel
@@ -45,6 +47,7 @@ fun MainScreen(swipeViewModel: SwipeViewModel = koinViewModel()) { // Inject Swi
         navController.addOnDestinationChangedListener { _, destination, _ ->
             showBottomBar = when (destination.route) {
                 Screen.DecisionScreen.route -> false
+                Screen.CountryDetailScreen.route.substringBefore("/{") -> false // Hide bottom bar on detail screen
                 else -> true
             }
         }
@@ -55,13 +58,10 @@ fun MainScreen(swipeViewModel: SwipeViewModel = koinViewModel()) { // Inject Swi
             if (showBottomBar) {
                 AppBottomNavigationBar(
                     navController = navController,
-                    isDecisionPending = swipeScreenState.isDecisionPending, // Pass the flag
-                    onDiscoverClickOverride = { // Lambda for special Discover navigation
+                    isDecisionPending = swipeScreenState.isDecisionPending,
+                    onDiscoverClickOverride = {
                         navController.navigate(Screen.DecisionScreen.route) {
                             launchSingleTop = true
-                            // Optional: popUpTo to manage backstack if coming from Favorites to Decision
-                            // This depends on exact desired backstack from Decision -> Favorites -> Decision via Discover
-                            // For now, just ensure DecisionScreen is brought to front or navigated to.
                         }
                     }
                 )
@@ -74,11 +74,10 @@ fun MainScreen(swipeViewModel: SwipeViewModel = koinViewModel()) { // Inject Swi
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.SwipeScreen.route) {
-                // SwipeScreen gets its own ViewModel instance via Koin
                 SwipeScreen(
                     navController = navController,
                     onNavigateToDecision = {
-                        swipeViewModel.setDecisionPending(true) // Set flag before navigating
+                        swipeViewModel.setDecisionPending(true)
                         navController.navigate(Screen.DecisionScreen.route)
                     }
                 )
@@ -87,21 +86,26 @@ fun MainScreen(swipeViewModel: SwipeViewModel = koinViewModel()) { // Inject Swi
                 FavoritesScreen(navController = navController)
             }
             composable(Screen.DecisionScreen.route) {
-                // DecisionScreen also gets its own SwipeViewModel instance via Koin
-                // or you could pass swipeViewModel from MainScreen if preferred (less clean)
                 DecisionScreen(
-                    swipeViewModel = koinViewModel(), // Or pass swipeViewModel from MainScreen
+                    swipeViewModel = koinViewModel(),
                     onContinueSwiping = {
-                        swipeViewModel.setDecisionPending(false) // Clear flag
+                        swipeViewModel.setDecisionPending(false)
                         navController.navigate(Screen.SwipeScreen.route) {
                             popUpTo(Screen.SwipeScreen.route) { inclusive = true }
                         }
                     },
                     onViewFavorites = {
-                        // DecisionScreen remains on backstack
                         navController.navigate(Screen.FavoritesScreen.route)
                     }
                 )
+            }
+            composable(
+                route = Screen.CountryDetailScreen.route,
+                arguments = listOf(navArgument("countryJson") { type = NavType.StringType })
+            ) { backStackEntry ->
+                // CountryDetailScreen gets its own ViewModel instance via Koin,
+                // which will use SavedStateHandle to get the countryJson argument.
+                CountryDetailScreen(navController = navController)
             }
         }
     }

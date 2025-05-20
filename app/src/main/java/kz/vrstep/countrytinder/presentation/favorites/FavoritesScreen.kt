@@ -62,7 +62,8 @@ fun FavoritesScreen(
                                 country = country,
                                 onRemoveClick = {
                                     viewModel.removeFavorite(country.name)
-                                }
+                                },
+                                navController = navController
                             )
                         }
                     }

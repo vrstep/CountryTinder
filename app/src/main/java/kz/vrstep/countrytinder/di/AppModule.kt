@@ -11,6 +11,7 @@ import kz.vrstep.countrytinder.domain.usecase.GetFavoriteCountriesUseCase
 import kz.vrstep.countrytinder.domain.usecase.GetUnsplashImageForCountryUseCase
 import kz.vrstep.countrytinder.domain.usecase.IsCountryFavoriteUseCase
 import kz.vrstep.countrytinder.domain.usecase.RemoveFavoriteCountryUseCase
+import kz.vrstep.countrytinder.presentation.detail.CountryDetailViewModel
 import kz.vrstep.countrytinder.presentation.favorites.FavoritesViewModel
 import kz.vrstep.countrytinder.presentation.swipe.SwipeViewModel
 import kz.vrstep.countrytinder.repository.CountryRepository
@@ -101,4 +102,5 @@ val appModule = module {
     // ViewModels
     viewModel { SwipeViewModel(get(), get(), get(), get(), get())  }
     viewModel { FavoritesViewModel(get(), get()) }
+    viewModel { params -> CountryDetailViewModel(savedStateHandle = params.get()) }
 }

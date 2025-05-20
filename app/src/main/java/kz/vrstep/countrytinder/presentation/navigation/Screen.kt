@@ -5,4 +5,7 @@ sealed class Screen(val route: String) {
     object FavoritesScreen : Screen("favorites_screen")
     object DecisionScreen : Screen("decision_screen") // Navigated to after 10 swipes
     // Potentially: object CountryDetailScreen : Screen("country_detail_screen/{countryName}")
+    data object CountryDetailScreen : Screen("country_detail_screen/{countryJson}") {
+        fun createRoute(countryJson: String) = "country_detail_screen/$countryJson"
+    }
 }
