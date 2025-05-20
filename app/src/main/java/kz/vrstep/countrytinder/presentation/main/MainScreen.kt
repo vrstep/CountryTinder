@@ -1,6 +1,7 @@
 package kz.vrstep.countrytinder.presentation.main
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -13,6 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,12 +31,15 @@ import kz.vrstep.countrytinder.presentation.decision.DecisionScreen
 import kz.vrstep.countrytinder.presentation.favorites.FavoritesScreen
 import kz.vrstep.countrytinder.presentation.navigation.Screen
 import kz.vrstep.countrytinder.presentation.swipe.SwipeScreen
+import kz.vrstep.countrytinder.presentation.swipe.SwipeViewModel
+import org.koin.compose.viewmodel.koinViewModel
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun MainScreen() {
+fun MainScreen(swipeViewModel: SwipeViewModel = koinViewModel()) { // Inject SwipeViewModel
     val navController = rememberNavController()
     var showBottomBar by remember { mutableStateOf(true) }
+    val swipeScreenState by swipeViewModel.state.collectAsState() // Collect state for decisionPending
 
     LaunchedEffect(navController) {
         navController.addOnDestinationChangedListener { _, destination, _ ->
@@ -48,7 +53,18 @@ fun MainScreen() {
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
-                AppBottomNavigationBar(navController = navController)
+                AppBottomNavigationBar(
+                    navController = navController,
+                    isDecisionPending = swipeScreenState.isDecisionPending, // Pass the flag
+                    onDiscoverClickOverride = { // Lambda for special Discover navigation
+                        navController.navigate(Screen.DecisionScreen.route) {
+                            launchSingleTop = true
+                            // Optional: popUpTo to manage backstack if coming from Favorites to Decision
+                            // This depends on exact desired backstack from Decision -> Favorites -> Decision via Discover
+                            // For now, just ensure DecisionScreen is brought to front or navigated to.
+                        }
+                    }
+                )
             }
         }
     ) { innerPadding ->
@@ -58,29 +74,31 @@ fun MainScreen() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.SwipeScreen.route) {
+                // SwipeScreen gets its own ViewModel instance via Koin
                 SwipeScreen(
                     navController = navController,
                     onNavigateToDecision = {
-                        navController.navigate(Screen.DecisionScreen.route) {
-                            // Do not pop SwipeScreen here, DecisionScreen is on top of it.
-                        }
+                        swipeViewModel.setDecisionPending(true) // Set flag before navigating
+                        navController.navigate(Screen.DecisionScreen.route)
                     }
                 )
             }
             composable(Screen.FavoritesScreen.route) {
-                FavoritesScreen(navController = navController) // NavController can be used for back navigation
+                FavoritesScreen(navController = navController)
             }
             composable(Screen.DecisionScreen.route) {
+                // DecisionScreen also gets its own SwipeViewModel instance via Koin
+                // or you could pass swipeViewModel from MainScreen if preferred (less clean)
                 DecisionScreen(
+                    swipeViewModel = koinViewModel(), // Or pass swipeViewModel from MainScreen
                     onContinueSwiping = {
-                        // Navigate to SwipeScreen and clear DecisionScreen from backstack.
-                        // This ensures SwipeScreen's LaunchedEffect(Unit) for loading can run if needed.
+                        swipeViewModel.setDecisionPending(false) // Clear flag
                         navController.navigate(Screen.SwipeScreen.route) {
                             popUpTo(Screen.SwipeScreen.route) { inclusive = true }
                         }
                     },
                     onViewFavorites = {
-                        // Simply navigate to FavoritesScreen. DecisionScreen will be on the backstack.
+                        // DecisionScreen remains on backstack
                         navController.navigate(Screen.FavoritesScreen.route)
                     }
                 )
@@ -90,9 +108,14 @@ fun MainScreen() {
 }
 
 @Composable
-fun AppBottomNavigationBar(navController: NavHostController) {
+fun AppBottomNavigationBar(
+    navController: NavHostController,
+    isDecisionPending: Boolean,
+    onDiscoverClickOverride: () -> Unit // Callback for special Discover navigation
+) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val TAG = "AppBottomNavBar"
 
     data class BottomNavItem(val screen: Screen, val icon: androidx.compose.ui.graphics.vector.ImageVector, val label: String)
 
@@ -106,17 +129,36 @@ fun AppBottomNavigationBar(navController: NavHostController) {
             NavigationBarItem(
                 icon = { Icon(item.icon, contentDescription = item.label) },
                 label = { Text(text = item.label) },
-                selected = currentDestination?.hierarchy?.any { it.route == item.screen.route } == true,
+                selected = currentDestination?.hierarchy?.any { it.route == item.screen.route || (item.screen == Screen.SwipeScreen && currentDestination?.route == Screen.DecisionScreen.route && isDecisionPending) } == true,
                 onClick = {
-                    navController.navigate(item.screen.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
+                    if (item.screen == Screen.SwipeScreen && isDecisionPending && currentDestination?.route != Screen.DecisionScreen.route) {
+                        Log.d(TAG, "Discover clicked, decision pending. Navigating to DecisionScreen.")
+                        onDiscoverClickOverride() // Use the override to navigate to DecisionScreen
+                    } else if (item.screen == Screen.SwipeScreen && currentDestination?.route == Screen.DecisionScreen.route) {
+                        // Already on DecisionScreen (or effectively, as Discover leads there), do nothing or pop?
+                        // For now, let standard logic handle it, which might re-navigate to SwipeScreen if not handled carefully.
+                        // The override should handle this. If on DecisionScreen, Discover is not shown.
+                        // If on Favorites and decision pending, override is called.
+                        Log.d(TAG, "Discover clicked, already on Decision or should be. Standard nav might apply if override isn't specific enough.")
+                        navController.navigate(item.screen.route) { // Fallback to standard if override doesn't cover all cases
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                        launchSingleTop = true
-                        restoreState = true
+                    }
+                    else {
+                        Log.d(TAG, "Standard bottom nav click for ${item.label}")
+                        navController.navigate(item.screen.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 }
             )
         }
     }
 }
+

@@ -35,35 +35,29 @@ fun SwipeScreen(
     val TAG = "SwipeScreen"
 
     LaunchedEffect(Unit) {
-        Log.d(TAG, "LaunchedEffect(Unit): countriesForSwipe.isEmpty=${state.countriesForSwipe.isEmpty()}, isLoadingInitialBatch=${state.isLoadingInitialBatch}, error.isBlank=${state.error.isBlank()}, currentCardIndex=${state.currentCardIndexInBatch}")
-        // Load initial batch only if countriesForSwipe is empty AND we are not already at the end of a previous batch
+        // ... (existing logic for initial load)
         if (state.countriesForSwipe.isEmpty() || state.currentCardIndexInBatch >= state.countriesForSwipe.size) {
             if (!state.isLoadingInitialBatch && state.error.isBlank()) {
                 Log.d(TAG, "Calling loadNextBatchOfCountries from LaunchedEffect(Unit)")
-                viewModel.loadNextBatchOfCountries()
+                viewModel.loadNextBatchOfCountries() // This will set isDecisionPending to false
             }
         }
     }
 
-    LaunchedEffect(state.swipedCountInBatch, state.countriesForSwipe.size) { // Depend on countriesForSwipe.size
+    LaunchedEffect(state.swipedCountInBatch, state.countriesForSwipe.size) {
         Log.d(TAG, "LaunchedEffect(swipedCountInBatch): ${state.swipedCountInBatch}, countriesForSwipe.size=${state.countriesForSwipe.size}")
         if (state.countriesForSwipe.isNotEmpty() && state.swipedCountInBatch >= Constants.INITIAL_COUNTRY_LOAD_COUNT) {
-            Log.i(TAG, "Swiped ${state.swipedCountInBatch} cards for decision. Navigating to decision.")
+            Log.i(TAG, "Swiped ${state.swipedCountInBatch} cards for decision. Setting decisionPending=true and navigating.")
+            viewModel.setDecisionPending(true) // **SET FLAG HERE**
             onNavigateToDecision()
-            // ViewModel's resetSwipeCountForBatch will be called by the DecisionScreen's onContinueSwiping path
-            // or when a new batch is explicitly loaded after decision.
-            // For now, let ViewModel handle this reset when loadNextBatchOfCountries is called.
         }
     }
 
     LaunchedEffect(state.currentCardIndexInBatch, state.countriesForSwipe.size, state.isLoadingInitialBatch) {
         Log.d(TAG, "LaunchedEffect(index, size, loading): index=${state.currentCardIndexInBatch}, size=${state.countriesForSwipe.size}, loading=${state.isLoadingInitialBatch}, swipedCount=${state.swipedCountInBatch}")
         if (!state.isLoadingInitialBatch && state.countriesForSwipe.isNotEmpty() && state.currentCardIndexInBatch >= state.countriesForSwipe.size) {
-            // This means current batch is exhausted visually.
-            // If the decision threshold (INITIAL_COUNTRY_LOAD_COUNT) hasn't been met by swipedCountInBatch,
-            // it means we showed fewer than 10 cards (e.g. due to filtering or small API response).
-            // In this case, still navigate to decision.
-            Log.i(TAG, "Current batch exhausted (index ${state.currentCardIndexInBatch} >= size ${state.countriesForSwipe.size}). Navigating to decision.")
+            Log.i(TAG, "Current batch exhausted (index ${state.currentCardIndexInBatch} >= size ${state.countriesForSwipe.size}). Setting decisionPending=true and navigating.")
+            viewModel.setDecisionPending(true) // **SET FLAG HERE**
             onNavigateToDecision()
         }
     }

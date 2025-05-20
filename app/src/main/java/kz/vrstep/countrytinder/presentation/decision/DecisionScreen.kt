@@ -1,19 +1,25 @@
 package kz.vrstep.countrytinder.presentation.decision
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextAlign
+import kz.vrstep.countrytinder.presentation.swipe.SwipeViewModel
+import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DecisionScreen(
+    swipeViewModel: SwipeViewModel = koinViewModel(), // Get SwipeViewModel
     onContinueSwiping: () -> Unit,
     onViewFavorites: () -> Unit
 ) {
+    val TAG = "DecisionScreen"
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("What's Next?") })
@@ -34,8 +40,13 @@ fun DecisionScreen(
             )
             Spacer(modifier = Modifier.height(24.dp))
             Button(
-                onClick = onContinueSwiping,
-                modifier = Modifier.fillMaxWidth()
+                onClick = {
+                    Log.d(TAG, "Continue Swiping clicked. Setting isDecisionPending to false.")
+                    swipeViewModel.setDecisionPending(false) // **CLEAR FLAG HERE**
+                    onContinueSwiping()
+                },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Continue Swiping More Countries")
             }

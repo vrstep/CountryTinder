@@ -23,11 +23,12 @@ data class SwipeScreenState(
     val isLoadingInitialBatch: Boolean = false,
     val allFetchedCountries: List<Country> = emptyList(),
     val countriesForSwipe: List<Country> = emptyList(),
-    val currentCardIndexInBatch: Int = 0, // Index for countriesForSwipe
+    val currentCardIndexInBatch: Int = 0,
     val error: String = "",
-    val swipedCountInBatch: Int = 0, // Counts swipes towards the 10-card decision
+    val swipedCountInBatch: Int = 0,
     val seenCountryNames: Set<String> = emptySet(),
-    val loadingImageForCountryName: Set<String> = emptySet()
+    val loadingImageForCountryName: Set<String> = emptySet(),
+    val isDecisionPending: Boolean = false
 )
 
 class SwipeViewModel(
@@ -67,8 +68,9 @@ class SwipeViewModel(
                 }
             }
 
-            Log.d(TAG, "Fetching new batch from API.")
-            _state.update { it.copy(isLoadingInitialBatch = true, error = "", currentCardIndexInBatch = 0, swipedCountInBatch = 0) } // Reset index and swipe count before new API fetch
+            Log.d(TAG, "Fetching new batch from API. Setting isDecisionPending to false.")
+            // Reset decision pending when loading a new batch for active swiping
+            _state.update { it.copy(isLoadingInitialBatch = true, error = "", currentCardIndexInBatch = 0, swipedCountInBatch = 0, isDecisionPending = false) }
 
             getDiscoverCountriesUseCase(fetchNew = true).onEach { result ->
                 when (result) {
@@ -111,7 +113,6 @@ class SwipeViewModel(
     }
 
     fun fetchImageForCountry(country: Country, indexInSwipeList: Int) {
-        // ... (fetchImageForCountry logic remains the same, logging is important here)
         if (country.unsplashImageUrl != null || _state.value.loadingImageForCountryName.contains(country.name)) {
             Log.d(TAG, "Image for ${country.name} already loaded/loading. URL: ${country.unsplashImageUrl}, LoadingSetContains: ${_state.value.loadingImageForCountryName.contains(country.name)}")
             return
@@ -137,10 +138,15 @@ class SwipeViewModel(
         }
     }
 
-    fun resetSwipeCountForBatch() { // This is called when user continues swiping after decision
+    fun setDecisionPending(isPending: Boolean) {
+        Log.d(TAG, "Setting isDecisionPending to: $isPending")
+        _state.update { it.copy(isDecisionPending = isPending) }
+    }
+
+    fun resetSwipeCountForBatch() {
         Log.d(TAG, "Resetting swipe count for batch (swipedCountInBatch to 0).")
+        // Note: isDecisionPending should be set to false by "Continue Swiping" action or when a new batch starts.
         _state.update { it.copy(swipedCountInBatch = 0) }
-        // currentCardIndexInBatch will be reset if loadNextBatchOfCountries is called or if it's already at 0.
     }
 
     private fun moveToNextCard() {
