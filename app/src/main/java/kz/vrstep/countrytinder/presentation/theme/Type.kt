@@ -1,4 +1,4 @@
-package kz.vrstep.countrytinder.ui.theme
+package kz.vrstep.countrytinder.presentation.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

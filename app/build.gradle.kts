@@ -11,8 +11,6 @@ val unsplashAccessKey: String = project.findProperty("unsplashAccessKey") as? St
 val unsplashSecretKey: String = project.findProperty("unsplashSecretKey") as? String
     ?: error("unsplashSecretKey is missing in gradle.properties")
 
-
-
 android {
     namespace = "kz.vrstep.countrytinder"
     compileSdk = 35
@@ -28,6 +26,16 @@ android {
 
         buildConfigField("String", "UNSPLASH_ACCESS_KEY", "\"$unsplashAccessKey\"")
         buildConfigField("String", "UNSPLASH_SECRET_KEY", "\"$unsplashSecretKey\"")
+
+        // Retrieve API key from gradle.properties and expose it via BuildConfig
+        val unsplashAccessKey: String = project.findProperty("unsplashAccessKey") as? String
+            ?: error("unsplashAccessKey is missing in gradle.properties")
+        // The Unsplash Secret Key is typically not needed for client-side image search.
+        // val unsplashSecretKey: String = project.findProperty("UNSPLASH_SECRET_KEY") as? String
+        //     ?: error("UNSPLASH_SECRET_KEY is missing in gradle.properties")
+
+        buildConfigField("String", "unsplashAccessKey", "\"$unsplashAccessKey\"")
+        // buildConfigField("String", "UNSPLASH_SECRET_KEY", "\"$unsplashSecretKey\"") // If needed later
     }
 
     buildTypes {
@@ -65,12 +73,17 @@ dependencies {
     implementation("io.insert-koin:koin-androidx-compose:$koin_version")
 
     // Retrofit dependencies
-    implementation("com.squareup.retrofit2:retrofit:3.1.0-SNAPSHOT")
+    implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.google.code.gson:gson:2.13.1")
-    implementation("com.squareup.retrofit2:converter-gson:latest.version")
+    implementation("com.squareup.retrofit2:converter-gson:3.0.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     // Coil dependencies
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0") // Only available on Android/JVM.
+    implementation("io.coil-kt.coil3:coil-network-ktor2:3.2.0")
+    implementation("io.coil-kt.coil3:coil-network-ktor3:3.2.0")
 
     // Compose navigation
     val nav_version = "2.9.0"
